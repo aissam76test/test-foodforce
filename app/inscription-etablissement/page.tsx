@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { signIn } from "next-auth/react";
+import { supabase } from '../lib/supabase';
 
 export default function InscriptionEtablissement() {
   const [etape, setEtape] = useState(1);
@@ -11,6 +11,15 @@ export default function InscriptionEtablissement() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/espace-etablissement`
+      }
+    });
+  };
 
   const handleEtape1 = (e: any) => {
     e.preventDefault();
@@ -80,8 +89,7 @@ export default function InscriptionEtablissement() {
         {etape === 1 && (
           <>
             {/* GOOGLE BUTTON */}
-            <button
-              onClick={() => signIn("google", { callbackUrl: '/espace-etablissement' })}
+            <button onClick={handleGoogle}
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '14px', borderRadius: '10px', border: '1px solid #e5e5e5', background: '#fff', fontWeight: 600, fontSize: '14px', cursor: 'pointer', marginBottom: '18px', fontFamily: 'Poppins, sans-serif' }}>
               <img src="https://www.svgrepo.com/show/475656/google-color.svg" style={{ width: '18px' }} />
               Continuer avec Google
@@ -111,7 +119,8 @@ export default function InscriptionEtablissement() {
               <input type="password" placeholder="Confirmer le mot de passe" required value={form.confirmPassword}
                 onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} style={{ ...inputStyle, marginBottom: '18px' }} />
 
-              <button type="submit" style={{ width: '100%', background: '#F47C20', color: 'white', padding: '14px', borderRadius: '10px', border: 'none', fontWeight: 700, fontSize: '15px', cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
+              <button type="submit"
+                style={{ width: '100%', background: '#F47C20', color: 'white', padding: '14px', borderRadius: '10px', border: 'none', fontWeight: 700, fontSize: '15px', cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
                 Continuer →
               </button>
             </form>
