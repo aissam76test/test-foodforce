@@ -16,7 +16,7 @@ export default function InscriptionEtablissement() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/espace-etablissement`
+        redirectTo: `${window.location.origin}/complete-profil-etablissement`
       }
     });
   };
