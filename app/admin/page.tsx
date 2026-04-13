@@ -2,7 +2,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+const ADMIN_PASSWORD = 'Mohamed1983';
+
 export default function Admin() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [extras, setExtras] = useState<any[]>([]);
   const [etablissements, setEtablissements] = useState<any[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
@@ -11,10 +16,55 @@ export default function Admin() {
   const [preview, setPreview] = useState<string | null>(null);
 
   useEffect(() => {
+    const auth = sessionStorage.getItem('admin_auth');
+    if (auth === 'true') setAuthenticated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!authenticated) return;
     fetch('/api/admin/extras').then(r => r.json()).then(setExtras);
     fetch('/api/admin/etablissements').then(r => r.json()).then(setEtablissements);
     fetch('/api/admin/missions').then(r => r.json()).then(setMissions);
-  }, []);
+  }, [authenticated]);
+
+  const handleLogin = (e: any) => {
+    e.preventDefault();
+    if (password === ADMIN_PASSWORD) {
+      sessionStorage.setItem('admin_auth', 'true');
+      setAuthenticated(true);
+      setError('');
+    } else {
+      setError('Mot de passe incorrect');
+    }
+  };
+
+  if (!authenticated) return (
+    <main style={{ fontFamily: 'Poppins, sans-serif', background: '#1a1a1a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '48px 40px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <span style={{ color: '#F47C20', fontWeight: 800, fontSize: '24px' }}>FoodForce</span>
+          <div style={{ color: '#888', fontSize: '14px', marginTop: '4px' }}>Panel Admin</div>
+        </div>
+        <form onSubmit={handleLogin}>
+          {error && (
+            <div style={{ background: '#fee', color: '#c00', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', textAlign: 'center' }}>
+              {error}
+            </div>
+          )}
+          <input
+            type="password"
+            placeholder="Mot de passe admin"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1.5px solid #eee', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as any, marginBottom: '16px', fontFamily: 'Poppins, sans-serif' }}
+          />
+          <button type="submit" style={{ width: '100%', background: '#F47C20', color: 'white', padding: '14px', borderRadius: '10px', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
+            Accéder au panel
+          </button>
+        </form>
+      </div>
+    </main>
+  );
 
   const validerExtra = async (id: string) => {
     await supabase.from('extras').update({ statut: 'validé' }).eq('id', id);
@@ -96,6 +146,10 @@ export default function Admin() {
               {b.count} {b.label}
             </div>
           ))}
+          <button onClick={() => { sessionStorage.removeItem('admin_auth'); setAuthenticated(false); }}
+            style={{ background: '#333', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+            🔒 Déconnexion
+          </button>
         </div>
       </div>
 
@@ -128,7 +182,6 @@ export default function Admin() {
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
           <div style={{ width: selected ? '40%' : '100%', overflowY: 'auto', padding: '20px' }}>
 
-            {/* EXTRAS */}
             {onglet === 'extras' && (
               <div>
                 <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Gestion des extras</h2>
@@ -157,7 +210,6 @@ export default function Admin() {
               </div>
             )}
 
-            {/* ETABLISSEMENTS */}
             {onglet === 'etablissements' && (
               <div>
                 <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Gestion des établissements</h2>
@@ -177,7 +229,6 @@ export default function Admin() {
               </div>
             )}
 
-            {/* MISSIONS */}
             {onglet === 'missions' && (
               <div>
                 <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Toutes les missions</h2>
@@ -192,7 +243,6 @@ export default function Admin() {
               </div>
             )}
 
-            {/* DOCUMENTS EXTRAS */}
             {onglet === 'documents' && (
               <div>
                 <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Documents extras</h2>
@@ -212,7 +262,6 @@ export default function Admin() {
               </div>
             )}
 
-            {/* DOCUMENTS ETABLISSEMENTS */}
             {onglet === 'documents_etab' && (
               <div>
                 <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Documents établissements</h2>
@@ -233,12 +282,10 @@ export default function Admin() {
             )}
           </div>
 
-          {/* FICHE DETAIL */}
           {selected && (
             <div style={{ width: '60%', background: 'white', borderLeft: '1px solid #f0f0f0', overflowY: 'auto', padding: '28px' }}>
               <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', marginBottom: '20px' }}>✕</button>
 
-              {/* EXTRA */}
               {selected.type === 'extra' && (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
@@ -299,7 +346,6 @@ export default function Admin() {
                 </div>
               )}
 
-              {/* ÉTABLISSEMENT */}
               {selected.type === 'etablissement' && (
                 <div>
                   <div style={{ marginBottom: '24px' }}>
@@ -344,7 +390,6 @@ export default function Admin() {
                 </div>
               )}
 
-              {/* DOCUMENTS EXTRA */}
               {selected.type === 'document_extra' && (
                 <div>
                   <div style={{ marginBottom: '24px' }}>
@@ -403,7 +448,6 @@ export default function Admin() {
                 </div>
               )}
 
-              {/* DOCUMENTS ETABLISSEMENT */}
               {selected.type === 'document_etab' && (
                 <div>
                   <div style={{ marginBottom: '24px' }}>
@@ -466,7 +510,6 @@ export default function Admin() {
         </div>
       </div>
 
-      {/* MODAL PRÉVISUALISATION */}
       {preview && (
         <div onClick={() => setPreview(null)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, cursor: 'zoom-out' }}>
