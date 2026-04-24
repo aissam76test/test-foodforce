@@ -244,7 +244,7 @@ export default function UploadDocumentsEtablissement() {
                 transition: 'all 0.3s ease',
                 animation: `slideIn ${0.5 + idx * 0.1}s ease`
               }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '12px', fontSize: '15px', color: textPrimary, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ fontWeight: 600, marginBottom: '12px', fontSize: '15px', color: textPrimary, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '24px' }}>{doc.icon}</span>
                   {doc.label}
                   <span style={{ color: '#F47C20' }}>*</span>
