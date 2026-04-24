@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 export default function Login() {
@@ -31,9 +31,9 @@ export default function Login() {
       .single();
 
     if (etab) {
-      window.location.href = '/espace-etablissement';
+      window.location.href = '/dashboard-etablissement';
     } else {
-      window.location.href = '/profil';
+      window.location.href = '/dashboard-extra';
     }
   };
 

@@ -16,7 +16,7 @@ export default function InscriptionEtablissement() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/complete-profil-etablissement`
+        redirectTo: `${window.location.origin}/upload-documents-etablissement`
       }
     });
   };
@@ -59,9 +59,9 @@ export default function InscriptionEtablissement() {
       <div style={{ textAlign: 'center', background: 'white', borderRadius: '18px', padding: '48px 32px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 30px rgba(0,0,0,0.08)' }}>
         <div style={{ fontSize: '60px', marginBottom: '16px' }}>🎉</div>
         <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#1a1a1a', marginBottom: '12px' }}>Compte créé !</h1>
-        <p style={{ color: '#666', marginBottom: '24px', lineHeight: 1.6 }}>Votre dossier est en cours de vérification. Notre équipe vous contacte sous 48h.</p>
-        <a href="/login" style={{ background: '#F47C20', color: 'white', padding: '14px 28px', borderRadius: '10px', textDecoration: 'none', fontWeight: 700, fontSize: '15px', display: 'inline-block' }}>
-          Se connecter
+        <p style={{ color: '#666', marginBottom: '24px', lineHeight: 1.6 }}>Veuillez maintenant uploader vos documents pour validation.</p>
+        <a href="/upload-documents-etablissement" style={{ background: '#F47C20', color: 'white', padding: '14px 28px', borderRadius: '10px', textDecoration: 'none', fontWeight: 700, fontSize: '15px', display: 'inline-block' }}>
+          Uploader mes documents →
         </a>
       </div>
     </main>
@@ -71,7 +71,6 @@ export default function InscriptionEtablissement() {
     <main style={{ fontFamily: 'Poppins, sans-serif', background: '#FDF0E8', minHeight: '100vh', padding: '40px 16px' }}>
       <div style={{ maxWidth: '420px', margin: '0 auto', background: 'white', borderRadius: '18px', padding: '32px 28px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)' }}>
 
-        {/* LOGO */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <a href="/" style={{ textDecoration: 'none' }}>
             <span style={{ fontWeight: 800, fontSize: '22px', color: '#1a1a1a' }}>Food</span>
@@ -88,21 +87,18 @@ export default function InscriptionEtablissement() {
 
         {etape === 1 && (
           <>
-            {/* GOOGLE BUTTON */}
             <button onClick={handleGoogle}
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '14px', borderRadius: '10px', border: '1px solid #e5e5e5', background: '#fff', fontWeight: 600, fontSize: '14px', cursor: 'pointer', marginBottom: '18px', fontFamily: 'Poppins, sans-serif' }}>
-              <img src="https://www.svgrepo.com/show/475656/google-color.svg" style={{ width: '18px' }} />
+              <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18Z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17Z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07Z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3Z"/></svg>
               Continuer avec Google
             </button>
 
-            {/* SEPARATOR */}
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '18px' }}>
               <div style={{ flex: 1, height: '1px', background: '#eee' }} />
               <span style={{ margin: '0 10px', fontSize: '12px', color: '#999' }}>OU</span>
               <div style={{ flex: 1, height: '1px', background: '#eee' }} />
             </div>
 
-            {/* FORM ETAPE 1 */}
             <form onSubmit={handleEtape1}>
               {error && (
                 <div style={{ background: '#fee', color: '#c00', padding: '10px', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
@@ -133,7 +129,6 @@ export default function InscriptionEtablissement() {
 
         {etape === 2 && (
           <>
-            {/* STEPPER */}
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px', gap: '8px' }}>
               <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px' }}>✓</div>
               <div style={{ flex: 1, height: '2px', background: '#F47C20' }} />
