@@ -2,520 +2,395 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-const ADMIN_PASSWORD = 'Mohamed1983';
-
 export default function Admin() {
-  const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [extras, setExtras] = useState<any[]>([]);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [activeTab, setActiveTab] = useState('etablissements');
   const [etablissements, setEtablissements] = useState<any[]>([]);
+  const [extras, setExtras] = useState<any[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
-  const [onglet, setOnglet] = useState('extras');
-  const [selected, setSelected] = useState<any>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const ADMIN_PASSWORD = 'Mohamed1983';
 
   useEffect(() => {
-    const auth = sessionStorage.getItem('admin_auth');
-    if (auth === 'true') setAuthenticated(true);
-  }, []);
+    if (authenticated) {
+      loadData();
+    }
+  }, [authenticated, activeTab]);
 
-  useEffect(() => {
-    if (!authenticated) return;
-    fetch('/api/admin/extras').then(r => r.json()).then(setExtras);
-    fetch('/api/admin/etablissements').then(r => r.json()).then(setEtablissements);
-    fetch('/api/admin/missions').then(r => r.json()).then(setMissions);
-  }, [authenticated]);
+  const loadData = async () => {
+    setLoading(true);
+    if (activeTab === 'etablissements') {
+      const { data } = await supabase.from('etablissements').select('*').order('created_at', { ascending: false });
+      setEtablissements(data || []);
+    } else if (activeTab === 'extras') {
+      const { data } = await supabase.from('extras').select('*').order('created_at', { ascending: false });
+      setExtras(data || []);
+    } else if (activeTab === 'missions') {
+      const { data } = await supabase.from('missions').select('*, etablissements(nom_etablissement)').order('created_at', { ascending: false });
+      setMissions(data || []);
+    }
+    setLoading(false);
+  };
 
-  const handleLogin = (e: any) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem('admin_auth', 'true');
       setAuthenticated(true);
-      setError('');
     } else {
-      setError('Mot de passe incorrect');
+      alert('❌ Mot de passe incorrect');
     }
   };
 
-  if (!authenticated) return (
-    <main style={{ fontFamily: 'Poppins, sans-serif', background: '#1a1a1a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'white', borderRadius: '20px', padding: '48px 40px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <span style={{ color: '#F47C20', fontWeight: 800, fontSize: '24px' }}>FoodForce</span>
-          <div style={{ color: '#888', fontSize: '14px', marginTop: '4px' }}>Panel Admin</div>
-        </div>
-        <form onSubmit={handleLogin}>
-          {error && (
-            <div style={{ background: '#fee', color: '#c00', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', textAlign: 'center' }}>
-              {error}
-            </div>
-          )}
-          <input
-            type="password"
-            placeholder="Mot de passe admin"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1.5px solid #eee', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as any, marginBottom: '16px', fontFamily: 'Poppins, sans-serif' }}
-          />
-          <button type="submit" style={{ width: '100%', background: '#F47C20', color: 'white', padding: '14px', borderRadius: '10px', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-            Accéder au panel
-          </button>
-        </form>
-      </div>
-    </main>
-  );
-
-  const validerExtra = async (id: string) => {
-    await supabase.from('extras').update({ statut: 'validé' }).eq('id', id);
-    setExtras(extras.map(e => e.id === id ? { ...e, statut: 'validé' } : e));
-    if (selected?.id === id) setSelected({ ...selected, statut: 'validé' });
-  };
-  const rejeterExtra = async (id: string) => {
-    await supabase.from('extras').update({ statut: 'rejeté' }).eq('id', id);
-    setExtras(extras.map(e => e.id === id ? { ...e, statut: 'rejeté' } : e));
-    if (selected?.id === id) setSelected({ ...selected, statut: 'rejeté' });
-  };
-  const validerEtab = async (id: string) => {
-    await supabase.from('etablissements').update({ statut: 'validé' }).eq('id', id);
-    setEtablissements(etablissements.map(e => e.id === id ? { ...e, statut: 'validé' } : e));
-    if (selected?.id === id) setSelected({ ...selected, statut: 'validé' });
-  };
-  const rejeterEtab = async (id: string) => {
-    await supabase.from('etablissements').update({ statut: 'rejeté' }).eq('id', id);
-    setEtablissements(etablissements.map(e => e.id === id ? { ...e, statut: 'rejeté' } : e));
-    if (selected?.id === id) setSelected({ ...selected, statut: 'rejeté' });
+  const validateDocument = async (etablissementId: string, docType: string, statut: string) => {
+    const field = `${docType}_statut`;
+    await supabase.from('etablissements').update({ [field]: statut }).eq('id', etablissementId);
+    loadData();
+    alert(`✅ Document ${statut}`);
   };
 
-  const updateDocStatutExtra = async (id: string, champ: string, statut: string) => {
-    await supabase.from('extras').update({ [champ]: statut }).eq('id', id);
-    setExtras(extras.map(e => e.id === id ? { ...e, [champ]: statut } : e));
-    if (selected?.id === id) setSelected({ ...selected, [champ]: statut });
-  };
+  const bg = darkMode ? '#0a0a0a' : 'linear-gradient(135deg, #FDF0E8 0%, #fff 100%)';
+  const cardBg = darkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff';
+  const textPrimary = darkMode ? '#fff' : '#1a1a1a';
+  const textSecondary = darkMode ? '#999' : '#666';
+  const borderColor = darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0,0,0,0.08)';
 
-  const updateDocStatutEtab = async (id: string, champ: string, statut: string) => {
-    await supabase.from('etablissements').update({ [champ]: statut }).eq('id', id);
-    setEtablissements(etablissements.map(e => e.id === id ? { ...e, [champ]: statut } : e));
-    if (selected?.id === id) setSelected({ ...selected, [champ]: statut });
-  };
-
-  const statutBadge = (statut: string) => {
-    const colors: any = {
-      'validé':     { bg: '#dcfce7', color: '#22c55e' },
-      'rejeté':     { bg: '#fee2e2', color: '#ef4444' },
-      'en_attente': { bg: '#FDF0E8', color: '#F47C20' },
-    };
-    const c = colors[statut] || colors['en_attente'];
+  if (!authenticated) {
     return (
-      <span style={{ background: c.bg, color: c.color, padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>
-        {statut || 'en_attente'}
-      </span>
+      <main style={{ fontFamily: 'Poppins, sans-serif', background: bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ 
+          background: cardBg,
+          backdropFilter: 'blur(20px) saturate(180%)',
+          borderRadius: '32px', 
+          padding: '48px', 
+          width: '100%', 
+          maxWidth: '480px',
+          boxShadow: darkMode ? '0 20px 80px rgba(0,0,0,0.6)' : '0 20px 80px rgba(0,0,0,0.12)',
+          border: `1px solid ${borderColor}`
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔐</div>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '0 0 8px 0', color: textPrimary }}>Panneau Admin</h1>
+            <p style={{ color: textSecondary, fontSize: '15px', margin: 0 }}>Accès réservé aux administrateurs</p>
+          </div>
+
+          <form onSubmit={handleLogin}>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: textPrimary }}>Mot de passe</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Entrez le mot de passe"
+                style={{ 
+                  width: '100%', 
+                  padding: '16px', 
+                  borderRadius: '12px', 
+                  border: `2px solid ${borderColor}`,
+                  fontSize: '15px',
+                  outline: 'none',
+                  background: darkMode ? 'rgba(255,255,255,0.05)' : '#fafafa',
+                  color: textPrimary,
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              style={{ 
+                width: '100%', 
+                background: 'linear-gradient(135deg, #F47C20 0%, #FF9A56 100%)', 
+                color: '#fff', 
+                padding: '16px', 
+                borderRadius: '12px', 
+                border: 'none', 
+                fontSize: '16px', 
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 8px 24px rgba(244, 124, 32, 0.3)'
+              }}
+            >
+              Se connecter
+            </button>
+          </form>
+        </div>
+      </main>
     );
-  };
-
-  const docsBadgeExtra = (extra: any) => {
-    const champs = ['cin_recto_statut', 'cin_verso_statut', 'ice_statut', 'rib_statut'];
-    const pending = champs.filter(c => !extra[c] || extra[c] === 'en_attente').length;
-    return pending === 0 ? statutBadge('validé') : statutBadge('en_attente');
-  };
-
-  const docsBadgeEtab = (etab: any) => {
-    const champs = ['kbis_statut', 'patente_statut', 'cin_gerant_statut', 'rib_statut'];
-    const pending = champs.filter(c => !etab[c] || etab[c] === 'en_attente').length;
-    return pending === 0 ? statutBadge('validé') : statutBadge('en_attente');
-  };
-
-  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+  }
 
   return (
-    <main style={{ fontFamily: 'Poppins, sans-serif', background: '#f5f5f5', minHeight: '100vh' }}>
+    <main style={{ fontFamily: 'Poppins, sans-serif', background: bg, minHeight: '100vh', transition: 'background 0.3s ease' }}>
+      <style>{`
+        @keyframes slideIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
 
-      {/* HEADER */}
-      <div style={{ background: '#1a1a1a', padding: '20px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <span style={{ color: '#F47C20', fontWeight: 800, fontSize: '20px' }}>FoodForce</span>
-          <span style={{ color: 'white', fontSize: '14px', marginLeft: '12px' }}>Panel Admin</span>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          {[
-            { label: 'Extras', count: extras.length, accent: true },
-            { label: 'Établissements', count: etablissements.length },
-            { label: 'Missions', count: missions.length },
-          ].map((b, i) => (
-            <div key={i} style={{ background: i === 0 ? '#F47C20' : '#333', color: 'white', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 700 }}>
-              {b.count} {b.label}
+      {/* NAVBAR */}
+      <nav style={{ 
+        background: darkMode ? 'rgba(10, 10, 10, 0.8)' : 'rgba(255, 255, 255, 0.8)', 
+        backdropFilter: 'blur(20px) saturate(180%)',
+        padding: '16px 40px', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        boxShadow: darkMode ? '0 4px 30px rgba(0,0,0,0.3)' : '0 4px 30px rgba(0,0,0,0.08)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        borderBottom: `1px solid ${borderColor}`
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="16" fill="url(#gradient1)"/>
+              <path d="M12 10h8v2h-6v4h5v2h-5v6h-2V10z" fill="white"/>
+              <defs>
+                <linearGradient id="gradient1" x1="0" y1="0" x2="32" y2="32">
+                  <stop offset="0%" stopColor="#F47C20"/>
+                  <stop offset="100%" stopColor="#FF9A56"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div>
+              <span style={{ fontWeight: 800, fontSize: '24px', color: textPrimary }}>Food</span>
+              <span style={{ fontWeight: 800, fontSize: '24px', background: 'linear-gradient(135deg, #F47C20 0%, #FF9A56 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Force</span>
             </div>
-          ))}
-          <button onClick={() => { sessionStorage.removeItem('admin_auth'); setAuthenticated(false); }}
-            style={{ background: '#333', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-            🔒 Déconnexion
+          </div>
+          <span style={{ fontSize: '13px', color: textSecondary, fontWeight: 600 }}>Admin Panel</span>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button onClick={() => setDarkMode(!darkMode)} style={{ background: darkMode ? 'rgba(255,255,255,0.1)' : '#f5f5f5', border: 'none', width: '40px', height: '40px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+          <button onClick={() => setAuthenticated(false)} style={{ background: darkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid #ef4444', padding: '10px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+            Déconnexion
           </button>
         </div>
-      </div>
+      </nav>
 
-      <div style={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
+      <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '40px 20px' }}>
+        {/* HEADER */}
+        <div style={{ marginBottom: '32px', animation: 'slideIn 0.6s ease' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 800, margin: '0 0 8px 0', color: textPrimary }}>Panneau d'administration</h1>
+          <p style={{ color: textSecondary, fontSize: '15px', margin: 0 }}>Gérez les établissements, extras et missions</p>
+        </div>
 
-        {/* SIDEBAR */}
-        <div style={{ width: '260px', background: 'white', borderRight: '1px solid #f0f0f0', padding: '20px 0' }}>
+        {/* TABS */}
+        <div style={{ 
+          background: cardBg,
+          backdropFilter: 'blur(20px) saturate(180%)',
+          borderRadius: '20px', 
+          padding: '8px', 
+          boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.06)',
+          border: `1px solid ${borderColor}`,
+          marginBottom: '32px',
+          display: 'flex',
+          gap: '8px',
+          animation: 'slideIn 0.7s ease'
+        }}>
           {[
-            { id: 'extras', label: '👤 Extras', pending: extras.filter(e => !e.statut || e.statut === 'en_attente').length },
-            { id: 'etablissements', label: '🏨 Établissements', pending: etablissements.filter(e => !e.statut || e.statut === 'en_attente').length },
-            { id: 'missions', label: '📋 Missions', pending: 0 },
-            { id: 'documents', label: '📄 Documents Extras', pending: extras.filter(e =>
-              ['cin_recto_statut','cin_verso_statut','ice_statut','rib_statut']
-              .some(c => !e[c] || e[c] === 'en_attente')).length },
-            { id: 'documents_etab', label: '📄 Documents Étab.', pending: etablissements.filter(e =>
-              ['kbis_statut','patente_statut','cin_gerant_statut','rib_statut']
-              .some(c => !e[c] || e[c] === 'en_attente')).length },
-          ].map(item => (
-            <button key={item.id} onClick={() => { setOnglet(item.id); setSelected(null); }}
-              style={{ width: '100%', padding: '14px 20px', textAlign: 'left', border: 'none', background: onglet === item.id ? '#FDF0E8' : 'transparent', borderLeft: onglet === item.id ? '3px solid #F47C20' : '3px solid transparent', cursor: 'pointer', fontFamily: 'Poppins, sans-serif', fontSize: '14px', fontWeight: 600, color: onglet === item.id ? '#F47C20' : '#1a1a1a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>{item.label}</span>
-              {item.pending > 0 && (
-                <span style={{ background: '#F47C20', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '11px', fontWeight: 700 }}>{item.pending}</span>
-              )}
+            { id: 'etablissements', label: '🏢 Établissements', count: etablissements.length },
+            { id: 'extras', label: '👥 Extras', count: extras.length },
+            { id: 'missions', label: '📋 Missions', count: missions.length }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                flex: 1,
+                background: activeTab === tab.id ? 'linear-gradient(135deg, #F47C20 0%, #FF9A56 100%)' : 'transparent',
+                color: activeTab === tab.id ? '#fff' : textPrimary,
+                border: 'none',
+                padding: '16px 24px',
+                borderRadius: '14px',
+                fontSize: '15px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              {tab.label}
+              <span style={{ 
+                background: activeTab === tab.id ? 'rgba(255,255,255,0.2)' : darkMode ? 'rgba(255,255,255,0.1)' : '#f0f0f0',
+                padding: '4px 10px',
+                borderRadius: '20px',
+                fontSize: '12px',
+                fontWeight: 700
+              }}>
+                {tab.count}
+              </span>
             </button>
           ))}
         </div>
 
-        {/* CONTENU */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          <div style={{ width: selected ? '40%' : '100%', overflowY: 'auto', padding: '20px' }}>
-
-            {onglet === 'extras' && (
-              <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Gestion des extras</h2>
-                {extras.map(extra => (
-                  <div key={extra.id} onClick={() => setSelected({ ...extra, type: 'extra' })}
-                    style={{ background: 'white', borderRadius: '12px', padding: '16px', marginBottom: '10px', cursor: 'pointer', border: selected?.id === extra.id ? '2px solid #F47C20' : '2px solid transparent', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {extra.photo_url ? (
-                        <img src={extra.photo_url} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#F47C20', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700 }}>
-                          {extra.prenom?.[0]}{extra.nom?.[0]}
-                        </div>
-                      )}
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '14px' }}>{extra.prenom} {extra.nom}</div>
-                        <div style={{ color: '#888', fontSize: '12px' }}>{extra.metier} · {extra.telephone}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      {docsBadgeExtra(extra)}
-                      {statutBadge(extra.statut)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {onglet === 'etablissements' && (
-              <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Gestion des établissements</h2>
-                {etablissements.map(etab => (
-                  <div key={etab.id} onClick={() => setSelected({ ...etab, type: 'etablissement' })}
-                    style={{ background: 'white', borderRadius: '12px', padding: '16px', marginBottom: '10px', cursor: 'pointer', border: selected?.id === etab.id ? '2px solid #F47C20' : '2px solid transparent', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '14px' }}>{etab.nom}</div>
-                      <div style={{ color: '#888', fontSize: '12px' }}>{etab.type} · {etab.ville} · {etab.telephone}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      {docsBadgeEtab(etab)}
-                      {statutBadge(etab.statut)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {onglet === 'missions' && (
-              <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Toutes les missions</h2>
-                {missions.map(m => (
-                  <div key={m.id} style={{ background: 'white', borderRadius: '12px', padding: '16px', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <div style={{ fontWeight: 700 }}>{m.titre}</div>
-                    <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>
-                      📅 {m.date_mission} · ⏰ {m.heure_debut}-{m.heure_fin} · 💰 {m.taux_horaire} MAD/h · 👥 {m.nombre_extras} extra(s)
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {onglet === 'documents' && (
-              <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Documents extras</h2>
-                {extras.map(extra => (
-                  <div key={extra.id} onClick={() => setSelected({ ...extra, type: 'document_extra' })}
-                    style={{ background: 'white', borderRadius: '12px', padding: '16px', marginBottom: '10px', cursor: 'pointer', border: selected?.id === extra.id ? '2px solid #F47C20' : '2px solid transparent', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#FDF0E8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>📄</div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '14px' }}>{extra.prenom} {extra.nom}</div>
-                        <div style={{ color: '#888', fontSize: '12px' }}>{extra.email} · {new Date(extra.created_at).toLocaleDateString('fr-FR')}</div>
-                      </div>
-                    </div>
-                    {docsBadgeExtra(extra)}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {onglet === 'documents_etab' && (
-              <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>Documents établissements</h2>
-                {etablissements.map(etab => (
-                  <div key={etab.id} onClick={() => setSelected({ ...etab, type: 'document_etab' })}
-                    style={{ background: 'white', borderRadius: '12px', padding: '16px', marginBottom: '10px', cursor: 'pointer', border: selected?.id === etab.id ? '2px solid #F47C20' : '2px solid transparent', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#FDF0E8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>🏨</div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '14px' }}>{etab.nom}</div>
-                        <div style={{ color: '#888', fontSize: '12px' }}>{etab.email} · {new Date(etab.created_at).toLocaleDateString('fr-FR')}</div>
-                      </div>
-                    </div>
-                    {docsBadgeEtab(etab)}
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* CONTENT */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '80px' }}>
+            <div style={{ width: '48px', height: '48px', border: '4px solid #e3e8ee', borderTop: '4px solid #F47C20', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
+            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
           </div>
+        ) : (
+          <>
+            {/* ÉTABLISSEMENTS */}
+            {activeTab === 'etablissements' && (
+              <div style={{ display: 'grid', gap: '20px' }}>
+                {etablissements.map((etab: any, idx: number) => (
+                  <div key={etab.id} style={{ 
+                    background: cardBg,
+                    backdropFilter: 'blur(20px) saturate(180%)',
+                    borderRadius: '20px', 
+                    padding: '28px',
+                    boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.06)',
+                    border: `1px solid ${borderColor}`,
+                    animation: `slideIn ${0.5 + idx * 0.1}s ease`
+                  }}>
+                    <div style={{ marginBottom: '20px' }}>
+                      <h3 style={{ fontSize: '20px', fontWeight: 700, color: textPrimary, margin: '0 0 8px 0' }}>{etab.nom_etablissement}</h3>
+                      <div style={{ fontSize: '14px', color: textSecondary }}>
+                        {etab.type_etablissement} • {etab.ville} • {etab.email}
+                      </div>
+                    </div>
 
-          {selected && (
-            <div style={{ width: '60%', background: 'white', borderLeft: '1px solid #f0f0f0', overflowY: 'auto', padding: '28px' }}>
-              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', marginBottom: '20px' }}>✕</button>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+                      {[
+                        { key: 'kbis', label: 'KBIS' },
+                        { key: 'patente', label: 'Patente' },
+                        { key: 'cin_gerant', label: 'CIN Gérant' },
+                        { key: 'rib', label: 'RIB' }
+                      ].map(doc => {
+                        const statut = etab[`${doc.key}_statut`];
+                        const url = etab[`${doc.key}_url`];
+                        const statutColors: any = {
+                          'validé': { bg: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: '#22c55e' },
+                          'en_attente': { bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: '#f97316' },
+                          'refusé': { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '#ef4444' }
+                        };
+                        const style = statutColors[statut] || statutColors['en_attente'];
 
-              {selected.type === 'extra' && (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-                    {selected.photo_url ? (
-                      <img src={selected.photo_url} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#F47C20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: 'white', fontWeight: 800 }}>
-                        {selected.prenom?.[0]}{selected.nom?.[0]}
+                        return (
+                          <div key={doc.key} style={{ 
+                            background: darkMode ? 'rgba(255,255,255,0.03)' : '#fafafa',
+                            borderRadius: '12px',
+                            padding: '16px',
+                            border: `1px solid ${borderColor}`
+                          }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: textPrimary, marginBottom: '8px' }}>{doc.label}</div>
+                            <div style={{ 
+                              background: style.bg,
+                              color: style.color,
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              textAlign: 'center',
+                              marginBottom: '12px',
+                              border: `1px solid ${style.border}`,
+                              textTransform: 'uppercase'
+                            }}>
+                              {statut || 'Non uploadé'}
+                            </div>
+                            {url && (
+                              <>
+                                <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', fontSize: '12px', color: '#3b82f6', textDecoration: 'none', marginBottom: '8px' }}>
+                                  Voir le document →
+                                </a>
+                                {statut !== 'validé' && (
+                                  <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button onClick={() => validateDocument(etab.id, doc.key, 'validé')} style={{ flex: 1, background: '#22c55e', color: '#fff', border: 'none', padding: '6px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                                      ✓
+                                    </button>
+                                    <button onClick={() => validateDocument(etab.id, doc.key, 'refusé')} style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '6px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                                      ✕
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* EXTRAS */}
+            {activeTab === 'extras' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+                {extras.map((extra: any, idx: number) => (
+                  <div key={extra.id} style={{ 
+                    background: cardBg,
+                    backdropFilter: 'blur(20px) saturate(180%)',
+                    borderRadius: '20px', 
+                    padding: '24px',
+                    boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.06)',
+                    border: `1px solid ${borderColor}`,
+                    animation: `slideIn ${0.5 + idx * 0.1}s ease`
+                  }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: textPrimary, margin: '0 0 12px 0' }}>
+                      {extra.prenom} {extra.nom}
+                    </h3>
+                    <div style={{ fontSize: '14px', color: textSecondary, lineHeight: '1.8' }}>
+                      <div>📧 {extra.email}</div>
+                      <div>📱 {extra.telephone}</div>
+                      <div>📍 {extra.ville}</div>
+                      <div>💼 {extra.experience}</div>
+                    </div>
+                    {extra.competences && extra.competences.length > 0 && (
+                      <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {extra.competences.map((comp: string, i: number) => (
+                          <span key={i} style={{ background: darkMode ? 'rgba(244, 124, 32, 0.2)' : 'rgba(244, 124, 32, 0.1)', color: '#F47C20', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+                            {comp}
+                          </span>
+                        ))}
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* MISSIONS */}
+            {activeTab === 'missions' && (
+              <div style={{ display: 'grid', gap: '16px' }}>
+                {missions.map((mission: any, idx: number) => (
+                  <div key={mission.id} style={{ 
+                    background: cardBg,
+                    backdropFilter: 'blur(20px) saturate(180%)',
+                    borderRadius: '16px', 
+                    padding: '20px',
+                    boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.06)',
+                    border: `1px solid ${borderColor}`,
+                    animation: `slideIn ${0.5 + idx * 0.1}s ease`,
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto',
+                    gap: '20px',
+                    alignItems: 'center'
+                  }}>
                     <div>
-                      <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>{selected.prenom} {selected.nom}</h2>
-                      <p style={{ color: '#F47C20', margin: '4px 0', fontWeight: 600 }}>{selected.metier}</p>
-                      {statutBadge(selected.statut)}
+                      <h3 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary, margin: '0 0 8px 0' }}>{mission.titre}</h3>
+                      <div style={{ fontSize: '13px', color: textSecondary }}>
+                        {mission.etablissements?.nom_etablissement} • {mission.poste_requis} • {mission.lieu} • {new Date(mission.date_mission).toLocaleDateString('fr-FR')}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#F47C20' }}>
+                      {mission.taux_horaire} MAD/h
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-                    {[
-                      { label: 'Email', value: selected.email },
-                      { label: 'Téléphone', value: selected.telephone },
-                      { label: 'Secteur', value: selected.secteur },
-                      { label: 'Expérience', value: selected.experience },
-                      { label: 'Ville', value: selected.ville },
-                      { label: 'Disponible', value: selected.disponible ? '✅ Oui' : '❌ Non' },
-                    ].map(item => (
-                      <div key={item.label} style={{ background: '#f9f9f9', borderRadius: '10px', padding: '14px' }}>
-                        <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>{item.label}</div>
-                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{item.value || '—'}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {selected.bio && (
-                    <div style={{ background: '#f9f9f9', borderRadius: '10px', padding: '14px', marginBottom: '16px' }}>
-                      <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Bio</div>
-                      <div style={{ fontSize: '14px' }}>{selected.bio}</div>
-                    </div>
-                  )}
-                  <div style={{ background: '#f9f9f9', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px' }}>📄 Documents</div>
-                    {[
-                      { label: 'CIN Recto', statutKey: 'cin_recto_statut' },
-                      { label: 'CIN Verso', statutKey: 'cin_verso_statut' },
-                      { label: 'ICE', statutKey: 'ice_statut' },
-                      { label: 'RIB', statutKey: 'rib_statut' },
-                    ].map(({ label, statutKey }) => (
-                      <div key={statutKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '13px', color: '#555' }}>{label}</span>
-                        {statutBadge(selected[statutKey] || 'en_attente')}
-                      </div>
-                    ))}
-                  </div>
-                  {selected.statut !== 'validé' && selected.statut !== 'rejeté' && (
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                      <button onClick={() => validerExtra(selected.id)} style={{ flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '15px' }}>✅ Valider le profil</button>
-                      <button onClick={() => rejeterExtra(selected.id)} style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '15px' }}>❌ Rejeter</button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selected.type === 'etablissement' && (
-                <div>
-                  <div style={{ marginBottom: '24px' }}>
-                    <h2 style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: 800 }}>{selected.nom}</h2>
-                    <p style={{ color: '#888', margin: '0 0 8px', fontSize: '14px' }}>{selected.type} · {selected.ville}</p>
-                    {statutBadge(selected.statut)}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-                    {[
-                      { label: 'Email', value: selected.email },
-                      { label: 'Téléphone', value: selected.telephone },
-                      { label: 'Type', value: selected.type },
-                      { label: 'Ville', value: selected.ville },
-                      { label: 'Adresse', value: selected.adresse },
-                    ].map(item => (
-                      <div key={item.label} style={{ background: '#f9f9f9', borderRadius: '10px', padding: '14px' }}>
-                        <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>{item.label}</div>
-                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{item.value || '—'}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ background: '#f9f9f9', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px' }}>📄 Documents</div>
-                    {[
-                      { label: 'KBIS', statutKey: 'kbis_statut' },
-                      { label: 'Patente', statutKey: 'patente_statut' },
-                      { label: 'CIN Gérant', statutKey: 'cin_gerant_statut' },
-                      { label: 'RIB', statutKey: 'rib_statut' },
-                    ].map(({ label, statutKey }) => (
-                      <div key={statutKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '13px', color: '#555' }}>{label}</span>
-                        {statutBadge(selected[statutKey] || 'en_attente')}
-                      </div>
-                    ))}
-                  </div>
-                  {selected.statut !== 'validé' && selected.statut !== 'rejeté' && (
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                      <button onClick={() => validerEtab(selected.id)} style={{ flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '15px' }}>✅ Valider l'établissement</button>
-                      <button onClick={() => rejeterEtab(selected.id)} style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '15px' }}>❌ Rejeter</button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selected.type === 'document_extra' && (
-                <div>
-                  <div style={{ marginBottom: '24px' }}>
-                    <h2 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800 }}>{selected.prenom} {selected.nom}</h2>
-                    <p style={{ color: '#888', margin: '0 0 8px', fontSize: '14px' }}>{selected.email} · {selected.telephone}</p>
-                  </div>
-                  {[
-                    { label: 'CIN Recto', urlKey: 'cin_recto_url', statutKey: 'cin_recto_statut' },
-                    { label: 'CIN Verso', urlKey: 'cin_verso_url', statutKey: 'cin_verso_statut' },
-                    { label: 'ICE', urlKey: 'ice_url', statutKey: 'ice_statut' },
-                    { label: 'RIB', urlKey: 'rib_url', statutKey: 'rib_statut' },
-                  ].map(({ label, urlKey, statutKey }) => {
-                    const url = selected[urlKey];
-                    const statut = selected[statutKey] || 'en_attente';
-                    return (
-                      <div key={urlKey} style={{ background: '#f9f9f9', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <div style={{ fontWeight: 700, fontSize: '14px' }}>{label}</div>
-                          {statutBadge(statut)}
-                        </div>
-                        {url ? (
-                          <div>
-                            {isImage(url) ? (
-                              <img src={url} alt={label} onClick={() => setPreview(url)}
-                                style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '8px', cursor: 'zoom-in', marginBottom: '8px' }} />
-                            ) : (
-                              <div style={{ background: '#e8e8e8', borderRadius: '8px', padding: '20px', textAlign: 'center', fontSize: '13px', color: '#555', marginBottom: '8px' }}>📎 Fichier PDF</div>
-                            )}
-                            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                              <a href={url} target="_blank" rel="noreferrer"
-                                style={{ flex: 1, background: '#1a1a1a', color: 'white', padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', textAlign: 'center' }}>
-                                ⬇️ Télécharger
-                              </a>
-                              {isImage(url) && (
-                                <button onClick={() => setPreview(url)}
-                                  style={{ flex: 1, background: '#F47C20', color: 'white', border: 'none', padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                                  🔍 Prévisualiser
-                                </button>
-                              )}
-                            </div>
-                            {statut !== 'validé' && statut !== 'rejeté' && (
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button onClick={() => updateDocStatutExtra(selected.id, statutKey, 'validé')}
-                                  style={{ flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}>✅ Valider</button>
-                                <button onClick={() => updateDocStatutExtra(selected.id, statutKey, 'rejeté')}
-                                  style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}>❌ Rejeter</button>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div style={{ color: '#bbb', fontSize: '13px' }}>Aucun fichier soumis</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {selected.type === 'document_etab' && (
-                <div>
-                  <div style={{ marginBottom: '24px' }}>
-                    <h2 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800 }}>{selected.nom}</h2>
-                    <p style={{ color: '#888', margin: '0 0 8px', fontSize: '14px' }}>{selected.email} · {selected.telephone}</p>
-                  </div>
-                  {[
-                    { label: 'KBIS', urlKey: 'kbis_url', statutKey: 'kbis_statut' },
-                    { label: 'Patente', urlKey: 'patente_url', statutKey: 'patente_statut' },
-                    { label: 'CIN Gérant', urlKey: 'cin_gerant_url', statutKey: 'cin_gerant_statut' },
-                    { label: 'RIB professionnel', urlKey: 'rib_url', statutKey: 'rib_statut' },
-                  ].map(({ label, urlKey, statutKey }) => {
-                    const url = selected[urlKey];
-                    const statut = selected[statutKey] || 'en_attente';
-                    return (
-                      <div key={urlKey} style={{ background: '#f9f9f9', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <div style={{ fontWeight: 700, fontSize: '14px' }}>{label}</div>
-                          {statutBadge(statut)}
-                        </div>
-                        {url ? (
-                          <div>
-                            {isImage(url) ? (
-                              <img src={url} alt={label} onClick={() => setPreview(url)}
-                                style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '8px', cursor: 'zoom-in', marginBottom: '8px' }} />
-                            ) : (
-                              <div style={{ background: '#e8e8e8', borderRadius: '8px', padding: '20px', textAlign: 'center', fontSize: '13px', color: '#555', marginBottom: '8px' }}>📎 Fichier PDF</div>
-                            )}
-                            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                              <a href={url} target="_blank" rel="noreferrer"
-                                style={{ flex: 1, background: '#1a1a1a', color: 'white', padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', textAlign: 'center' }}>
-                                ⬇️ Télécharger
-                              </a>
-                              {isImage(url) && (
-                                <button onClick={() => setPreview(url)}
-                                  style={{ flex: 1, background: '#F47C20', color: 'white', border: 'none', padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                                  🔍 Prévisualiser
-                                </button>
-                              )}
-                            </div>
-                            {statut !== 'validé' && statut !== 'rejeté' && (
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button onClick={() => updateDocStatutEtab(selected.id, statutKey, 'validé')}
-                                  style={{ flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}>✅ Valider</button>
-                                <button onClick={() => updateDocStatutEtab(selected.id, statutKey, 'rejeté')}
-                                  style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}>❌ Rejeter</button>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div style={{ color: '#bbb', fontSize: '13px' }}>Aucun fichier soumis</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
-
-      {preview && (
-        <div onClick={() => setPreview(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, cursor: 'zoom-out' }}>
-          <img src={preview} style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: '12px' }} />
-        </div>
-      )}
     </main>
   );
 }

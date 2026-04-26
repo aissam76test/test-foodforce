@@ -6,9 +6,10 @@ export default function Candidatures() {
   const [user, setUser] = useState<any>(null);
   const [etablissement, setEtablissement] = useState<any>(null);
   const [candidatures, setCandidatures] = useState<any[]>([]);
+  const [filteredCandidatures, setFilteredCandidatures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtreStatut, setFiltreStatut] = useState<string>('toutes');
-  const [missionFilter, setMissionFilter] = useState<string>('');
+  const [darkMode, setDarkMode] = useState(false);
+  const [filter, setFilter] = useState('toutes');
 
   useEffect(() => {
     const getUser = async () => {
@@ -19,12 +20,7 @@ export default function Candidatures() {
       const { data: etabData } = await supabase.from('etablissements').select('*').eq('email', user.email).single();
       if (etabData) {
         setEtablissement(etabData);
-
-        // Récupérer le paramètre mission depuis l'URL
-        const params = new URLSearchParams(window.location.search);
-        const missionId = params.get('mission');
-        if (missionId) setMissionFilter(missionId);
-
+        
         const { data: candsData } = await supabase
           .from('candidatures')
           .select('*, missions!inner(*), extras(*)')
@@ -32,146 +28,317 @@ export default function Candidatures() {
           .order('created_at', { ascending: false });
 
         setCandidatures(candsData || []);
-      } else {
-        window.location.href = '/dashboard-extra';
+        setFilteredCandidatures(candsData || []);
       }
       setLoading(false);
     };
     getUser();
   }, []);
 
-  const changerStatut = async (id: string, nouveauStatut: string) => {
-    await supabase.from('candidatures').update({ statut: nouveauStatut }).eq('id', id);
-    setCandidatures(candidatures.map(c => c.id === id ? { ...c, statut: nouveauStatut } : c));
+  useEffect(() => {
+    if (filter === 'toutes') {
+      setFilteredCandidatures(candidatures);
+    } else {
+      setFilteredCandidatures(candidatures.filter((c: any) => c.statut === filter));
+    }
+  }, [filter, candidatures]);
+
+  const handleCandidature = async (id: string, newStatut: string) => {
+    await supabase.from('candidatures').update({ statut: newStatut }).eq('id', id);
+    setCandidatures(candidatures.map(c => c.id === id ? { ...c, statut: newStatut } : c));
+    alert(`✅ Candidature ${newStatut === 'accepté' ? 'acceptée' : 'refusée'}`);
   };
 
-  const candidaturesFiltrees = candidatures
-    .filter(c => filtreStatut === 'toutes' || c.statut === filtreStatut)
-    .filter(c => !missionFilter || c.mission_id === missionFilter);
+  const bg = darkMode ? '#0a0a0a' : 'linear-gradient(135deg, #FDF0E8 0%, #fff 100%)';
+  const cardBg = darkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff';
+  const textPrimary = darkMode ? '#fff' : '#1a1a1a';
+  const textSecondary = darkMode ? '#999' : '#666';
+  const borderColor = darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0,0,0,0.05)';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '100px', fontFamily: 'Poppins, sans-serif' }}>Chargement...</div>;
+  if (loading) return (
+    <div style={{ fontFamily: 'Poppins, sans-serif', background: bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '48px', height: '48px', border: '4px solid #e3e8ee', borderTop: '4px solid #F47C20', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 
   return (
-    <main style={{ fontFamily: 'Poppins, sans-serif', background: '#f5f5f5', minHeight: '100vh' }}>
-      {/* NAV */}
-      <nav style={{ background: 'white', padding: '16px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-        <div>
-          <span style={{ fontWeight: 800, fontSize: '20px', color: '#1a1a1a' }}>Food</span>
-          <span style={{ fontWeight: 800, fontSize: '20px', color: '#F47C20' }}>Force</span>
+    <main style={{ fontFamily: 'Poppins, sans-serif', background: bg, minHeight: '100vh', transition: 'background 0.3s ease' }}>
+      <style>{`
+        @keyframes slideIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
+      {/* NAVBAR */}
+      <nav style={{ 
+        background: darkMode ? 'rgba(10, 10, 10, 0.8)' : 'rgba(255, 255, 255, 0.8)', 
+        backdropFilter: 'blur(20px) saturate(180%)',
+        padding: '16px 40px', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        boxShadow: darkMode ? '0 4px 30px rgba(0,0,0,0.3)' : '0 4px 30px rgba(0,0,0,0.08)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        borderBottom: `1px solid ${borderColor}`
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="16" fill="url(#gradient1)"/>
+              <path d="M12 10h8v2h-6v4h5v2h-5v6h-2V10z" fill="white"/>
+              <defs>
+                <linearGradient id="gradient1" x1="0" y1="0" x2="32" y2="32">
+                  <stop offset="0%" stopColor="#F47C20"/>
+                  <stop offset="100%" stopColor="#FF9A56"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div>
+              <span style={{ fontWeight: 800, fontSize: '24px', color: textPrimary }}>Food</span>
+              <span style={{ fontWeight: 800, fontSize: '24px', background: 'linear-gradient(135deg, #F47C20 0%, #FF9A56 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Force</span>
+            </div>
+          </div>
         </div>
-        <a href="/dashboard-etablissement" style={{ textDecoration: 'none', color: '#666', fontWeight: 600, fontSize: '14px' }}>← Retour au dashboard</a>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <a href="/dashboard-etablissement" style={{ textDecoration: 'none', color: textSecondary, fontWeight: 600, fontSize: '14px', padding: '10px 16px', borderRadius: '10px' }}>
+            ← Retour
+          </a>
+          <button onClick={() => setDarkMode(!darkMode)} style={{ background: darkMode ? 'rgba(255,255,255,0.1)' : '#f5f5f5', border: 'none', width: '40px', height: '40px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
       </nav>
 
-      <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-        <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>Candidatures</h1>
-          <p style={{ color: '#666', fontSize: '14px' }}>Gérez les candidatures reçues pour vos missions</p>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px 20px' }}>
+        {/* HEADER */}
+        <div style={{ marginBottom: '32px', animation: 'slideIn 0.6s ease' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 800, margin: '0 0 8px 0', color: textPrimary }}>Candidatures</h1>
+          <p style={{ color: textSecondary, fontSize: '15px', margin: 0 }}>Gérez les candidatures reçues pour vos missions</p>
         </div>
 
-        {/* FILTRES */}
-        <div style={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', marginBottom: '24px', display: 'flex', gap: '12px' }}>
-          {[
-            { key: 'toutes', label: 'Toutes', count: candidatures.length },
-            { key: 'en_attente', label: 'En attente', count: candidatures.filter(c => c.statut === 'en_attente').length },
-            { key: 'accepté', label: 'Acceptées', count: candidatures.filter(c => c.statut === 'accepté').length },
-            { key: 'refusé', label: 'Refusées', count: candidatures.filter(c => c.statut === 'refusé').length },
-          ].map(f => (
-            <button key={f.key} onClick={() => setFiltreStatut(f.key)}
-              style={{ flex: 1, background: filtreStatut === f.key ? '#F47C20' : '#f9f9f9', color: filtreStatut === f.key ? 'white' : '#666', padding: '12px', borderRadius: '10px', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}>
-              {f.label} ({f.count})
-            </button>
-          ))}
+        {/* FILTERS */}
+        <div style={{ 
+          background: cardBg,
+          backdropFilter: 'blur(20px) saturate(180%)',
+          borderRadius: '20px', 
+          padding: '24px', 
+          boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.06)',
+          border: `1px solid ${borderColor}`,
+          marginBottom: '32px',
+          animation: 'slideIn 0.7s ease'
+        }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            {[
+              { value: 'toutes', label: 'Toutes' },
+              { value: 'en_attente', label: 'En attente' },
+              { value: 'accepté', label: 'Acceptées' },
+              { value: 'refusé', label: 'Refusées' }
+            ].map(f => (
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                style={{
+                  background: filter === f.value ? 'linear-gradient(135deg, #F47C20 0%, #FF9A56 100%)' : darkMode ? 'rgba(255,255,255,0.05)' : '#f5f5f5',
+                  color: filter === f.value ? '#fff' : textPrimary,
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* LISTE DES CANDIDATURES */}
-        {candidaturesFiltrees.length === 0 ? (
-          <div style={{ background: 'white', borderRadius: '16px', padding: '60px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', textAlign: 'center', color: '#888' }}>
-            Aucune candidature {filtreStatut !== 'toutes' && filtreStatut}
+        {/* CANDIDATURES LIST */}
+        {filteredCandidatures.length === 0 ? (
+          <div style={{ 
+            background: cardBg,
+            backdropFilter: 'blur(20px) saturate(180%)',
+            borderRadius: '24px', 
+            padding: '80px 40px',
+            boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.06)',
+            border: `1px solid ${borderColor}`,
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.5 }}>📭</div>
+            <p style={{ color: textSecondary, fontSize: '16px', margin: 0 }}>Aucune candidature trouvée</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {candidaturesFiltrees.map(c => {
-              const statutColors: any = {
-                'en_attente': { bg: '#FDF0E8', color: '#F47C20' },
-                'accepté': { bg: '#dcfce7', color: '#22c55e' },
-                'refusé': { bg: '#fee', color: '#ef4444' },
-                'complétée': { bg: '#dbeafe', color: '#3b82f6' }
+          <div style={{ display: 'grid', gap: '20px' }}>
+            {filteredCandidatures.map((cand: any, idx: number) => {
+              const statutStyles: any = {
+                'en_attente': { bg: darkMode ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: '#f97316', label: 'En attente' },
+                'accepté': { bg: darkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: '#22c55e', label: 'Acceptée' },
+                'refusé': { bg: darkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '#ef4444', label: 'Refusée' }
               };
-              const style = statutColors[c.statut] || statutColors['en_attente'];
+              const style = statutStyles[cand.statut] || statutStyles['en_attente'];
 
               return (
-                <div key={c.id} style={{ background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '16px' }}>
-                    <div style={{ flex: 1 }}>
+                <div key={cand.id} style={{ 
+                  background: cardBg,
+                  backdropFilter: 'blur(20px) saturate(180%)',
+                  borderRadius: '20px', 
+                  padding: '28px',
+                  boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.06)',
+                  border: `1px solid ${borderColor}`,
+                  transition: 'all 0.3s ease',
+                  animation: `slideIn ${0.5 + idx * 0.1}s ease`
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '24px', alignItems: 'start' }}>
+                    {/* PHOTO */}
+                    <div style={{
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #F47C20 0%, #FF9A56 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: '28px',
+                      flexShrink: 0
+                    }}>
+                      {cand.extras?.prenom?.[0]}{cand.extras?.nom?.[0]}
+                    </div>
+
+                    {/* INFO */}
+                    <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                        <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>
-                          {c.extras?.prenom} {c.extras?.nom}
+                        <h3 style={{ fontSize: '20px', fontWeight: 700, color: textPrimary, margin: 0 }}>
+                          {cand.extras?.prenom} {cand.extras?.nom}
                         </h3>
-                        <span style={{ background: style.bg, color: style.color, padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>
-                          {c.statut}
+                        <span style={{ 
+                          background: style.bg, 
+                          color: style.color, 
+                          padding: '4px 12px', 
+                          borderRadius: '20px', 
+                          fontSize: '11px', 
+                          fontWeight: 700,
+                          border: `1px solid ${style.border}`,
+                          textTransform: 'uppercase'
+                        }}>
+                          {style.label}
                         </span>
                       </div>
-                      <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                        📧 {c.extras?.email}
+
+                      <div style={{ fontSize: '15px', color: textSecondary, marginBottom: '16px' }}>
+                        Pour la mission : <strong style={{ color: textPrimary }}>{cand.missions?.titre}</strong>
                       </div>
-                      {c.extras?.telephone && (
-                        <div style={{ fontSize: '14px', color: '#666' }}>
-                          📞 {c.extras.telephone}
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: textSecondary }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke={textSecondary} strokeWidth="2"/>
+                            <path d="M22 6l-10 7L2 6" stroke={textSecondary} strokeWidth="2"/>
+                          </svg>
+                          {cand.extras?.email}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: textSecondary }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" stroke={textSecondary} strokeWidth="2"/>
+                          </svg>
+                          {cand.extras?.telephone}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: textSecondary }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke={textSecondary} strokeWidth="2"/>
+                            <circle cx="12" cy="10" r="3" stroke={textSecondary} strokeWidth="2"/>
+                          </svg>
+                          {cand.extras?.ville}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: textSecondary }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke={textSecondary} strokeWidth="2"/>
+                            <circle cx="12" cy="7" r="4" stroke={textSecondary} strokeWidth="2"/>
+                          </svg>
+                          {cand.extras?.experience}
+                        </div>
+                      </div>
+
+                      {cand.extras?.competences && cand.extras.competences.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '13px', color: textSecondary, marginBottom: '8px', fontWeight: 600 }}>Compétences :</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {cand.extras.competences.map((comp: string, i: number) => (
+                              <span key={i} style={{
+                                background: darkMode ? 'rgba(244, 124, 32, 0.2)' : 'rgba(244, 124, 32, 0.1)',
+                                color: '#F47C20',
+                                padding: '6px 12px',
+                                borderRadius: '20px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                border: '1px solid rgba(244, 124, 32, 0.3)'
+                              }}>
+                                {comp}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
-                  </div>
 
-                  <div style={{ background: '#f9f9f9', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontWeight: 700, marginBottom: '8px' }}>Mission : {c.missions?.titre}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px', color: '#666' }}>
-                      <div>📅 {new Date(c.missions?.date_mission).toLocaleDateString('fr-FR')}</div>
-                      <div>⏰ {c.missions?.heure_debut} - {c.missions?.heure_fin}</div>
-                      <div>💰 {c.missions?.taux_horaire} MAD/h</div>
-                    </div>
-                  </div>
-
-                  {c.extras && (
-                    <div style={{ background: '#f9f9f9', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                      <div style={{ fontWeight: 700, marginBottom: '8px' }}>Profil du candidat</div>
-                      <div style={{ fontSize: '13px', color: '#666' }}>
-                        {c.extras.bio && <div style={{ marginBottom: '8px' }}>{c.extras.bio}</div>}
-                        {c.extras.postes && c.extras.postes.length > 0 && (
-                          <div style={{ marginBottom: '8px' }}>
-                            <strong>Postes :</strong> {c.extras.postes.slice(0, 3).join(', ')}
-                            {c.extras.postes.length > 3 && ` +${c.extras.postes.length - 3}`}
-                          </div>
-                        )}
-                        {c.extras.competences && c.extras.competences.length > 0 && (
-                          <div>
-                            <strong>Compétences :</strong> {c.extras.competences.join(', ')}
-                          </div>
-                        )}
+                    {/* ACTIONS */}
+                    {cand.statut === 'en_attente' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '140px' }}>
+                        <button
+                          onClick={() => handleCandidature(cand.id, 'accepté')}
+                          style={{
+                            background: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '12px 20px',
+                            borderRadius: '10px',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M22 4L12 14.01l-3-3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Accepter
+                        </button>
+                        <button
+                          onClick={() => handleCandidature(cand.id, 'refusé')}
+                          style={{
+                            background: darkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+                            color: '#ef4444',
+                            border: '1px solid #ef4444',
+                            padding: '12px 20px',
+                            borderRadius: '10px',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18M6 6l12 12" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Refuser
+                        </button>
                       </div>
-                    </div>
-                  )}
-
-                  {c.statut === 'en_attente' && (
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <button onClick={() => changerStatut(c.id, 'accepté')}
-                        style={{ flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', fontWeight: 700, fontSize: '15px', cursor: 'pointer' }}>
-                        ✅ Accepter
-                      </button>
-                      <button onClick={() => changerStatut(c.id, 'refusé')}
-                        style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', fontWeight: 700, fontSize: '15px', cursor: 'pointer' }}>
-                        ❌ Refuser
-                      </button>
-                    </div>
-                  )}
-
-                  {c.statut === 'accepté' && (
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <button onClick={() => changerStatut(c.id, 'complétée')}
-                        style={{ flex: 1, background: '#3b82f6', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', fontWeight: 700, fontSize: '15px', cursor: 'pointer' }}>
-                        ✔️ Marquer comme complétée
-                      </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               );
             })}
