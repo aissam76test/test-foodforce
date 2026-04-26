@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 
 export default function Home() {
   return (
@@ -36,7 +35,7 @@ export default function Home() {
             Les meilleurs extras <span style={{ color: '#F47C20' }}>CHR</span> à portée de main
           </h1>
           <p style={{ fontSize: '18px', color: '#666', margin: '0 0 40px 0', lineHeight: '1.6' }}>
-            FoodForce connecte les professionnels de l'hôtellerie-restauration avec les établissements qui ont besoin d'eux — rapidement, simplement, au Maroc.
+            FoodForce connecte les professionnels de l&apos;hôtellerie-restauration avec les établissements qui ont besoin d&apos;eux — rapidement, simplement, au Maroc.
           </p>
           <div style={{ display: 'flex', gap: '16px' }}>
             <a href="/inscription-extra" style={{ background: '#F47C20', color: '#fff', padding: '16px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: 700, fontSize: '16px' }}>
@@ -53,7 +52,7 @@ export default function Home() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#22c55e' }} />
               <span style={{ fontWeight: 700, fontSize: '16px' }}>Missions disponibles</span>
-              <span style={{ background: '#F47C20', color: '#fff', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700' }}>3</span>
+              <span style={{ background: '#F47C20', color: '#fff', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>3</span>
             </div>
             
             {[
@@ -152,7 +151,7 @@ export default function Home() {
               Inscrivez-vous gratuitement et accédez aux meilleures missions de restauration au Maroc.
             </p>
             <a href="/inscription-extra" style={{ display: 'inline-block', background: '#fff', color: '#F47C20', padding: '16px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: 700, fontSize: '16px' }}>
-              S'inscrire gratuitement →
+              S&apos;inscrire gratuitement →
             </a>
           </div>
 
@@ -190,7 +189,7 @@ export default function Home() {
             <div>
               <div style={{ fontWeight: 700, marginBottom: '16px' }}>EXTRAS</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <a href="/inscription-extra" style={{ color: '#999', textDecoration: 'none', fontSize: '14px' }}>S'inscrire</a>
+                <a href="/inscription-extra" style={{ color: '#999', textDecoration: 'none', fontSize: '14px' }}>S&apos;inscrire</a>
                 <a href="#" style={{ color: '#999', textDecoration: 'none', fontSize: '14px' }}>Voir les missions</a>
                 <a href="#comment" style={{ color: '#999', textDecoration: 'none', fontSize: '14px' }}>Comment ça marche</a>
                 <a href="/login" style={{ color: '#999', textDecoration: 'none', fontSize: '14px' }}>Mon profil</a>
