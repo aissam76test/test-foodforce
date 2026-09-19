@@ -105,3 +105,35 @@ begin
  return v_app;
 end; $$;
 grant execute on function public.apply_to_mission(uuid) to authenticated;
+
+
+create or replace function public.validate_worked_hours(
+  p_mission_id uuid,
+  p_extra_id uuid,
+  p_hours numeric
+)
+returns public.worked_hours
+language plpgsql security definer set search_path = public
+as $$
+declare v_user uuid := auth.uid(); v_role text; v_m public.missions%rowtype; v_app public.applications%rowtype; v_hours public.worked_hours%rowtype;
+begin
+ if v_user is null then raise exception 'AUTH_REQUIRED'; end if;
+ select role into v_role from public.profiles where id=v_user;
+ if v_role <> 'pro' then raise exception 'PRO_ROLE_REQUIRED'; end if;
+ select * into v_m from public.missions where id=p_mission_id and establishment_id=v_user;
+ if not found then raise exception 'MISSION_NOT_OWNED'; end if;
+ select * into v_app from public.applications where mission_id=p_mission_id and extra_id=p_extra_id and status='accepted';
+ if not found then raise exception 'EXTRA_NOT_ACCEPTED'; end if;
+ if p_hours is null or p_hours <= 0 then raise exception 'INVALID_HOURS'; end if;
+ insert into public.worked_hours(mission_id,extra_id,hours,validated_at,validated_by)
+ values(p_mission_id,p_extra_id,p_hours,now(),v_user)
+ returning * into v_hours;
+ update public.missions set status='completed' where id=p_mission_id;
+ return v_hours;
+end; $$;
+grant execute on function public.validate_worked_hours(uuid,uuid,numeric) to authenticated;
+
+create policy "worked_hours_pro_insert" on public.worked_hours
+ for insert to authenticated with check (
+   exists (select 1 from public.missions m where m.id=mission_id and m.establishment_id=auth.uid())
+ );
