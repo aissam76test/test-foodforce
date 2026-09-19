@@ -1,20 +1,22 @@
-# Grille tarifaire FFAPP
+# FoodForce Tariffs
 
-Source de vérité : salaires foodforce v7.xlsx, feuille Grille Tarifaire FoodForce.
+Source of truth: salaires foodforce v7.xlsx, sheet Grille Tarifaire FoodForce.
 
-La feuille officielle contient 59 métiers.
+The sheet contains 59 métiers. The official formula published in the workbook is:
 
-Formule documentée :
-- taux candidat = taux moyen × 1,45
-- prix employeur HT = taux candidat × 1,25
-- TVA = HT × 20 %
-- prix employeur TTC = HT + TVA
+- Candidate: Taux moyen × 1.45
+- FoodForce commission: 25%
+- VAT: 20%
+- Employer TTC: Taux moyen × 1.45 × 1.25 × 1.20
 
-Exemple Serveur :
-- taux moyen : 24,87 MAD/h
-- candidat : 36,06 MAD/h
-- employeur HT : 45,08 MAD/h
-- TVA : 9,02 MAD/h
-- employeur TTC : 54,09 MAD/h
+Example from the workbook:
+- Serveur average: 24.869110 MAD/h
+- Candidate: 36.060209 MAD/h
+- Employer HT: 45.075262 MAD/h
+- VAT: 9.015052 MAD/h
+- Employer TTC: 54.090314 MAD/h
 
-Ces valeurs doivent être stockées/calculées côté serveur. Le frontend ne constitue jamais une autorité tarifaire.
+Security rule: a Pro client never chooses or sends a price. The server loads the official tariff by job/tariff id and stores a snapshot on the mission.
+
+The SQL seed is in supabase/migrations/002_seed_tariffs.sql.
+The index.ts file contains the shared calculation and mismatch guard for server-side use.
