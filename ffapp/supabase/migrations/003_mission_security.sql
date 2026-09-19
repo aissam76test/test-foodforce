@@ -87,3 +87,21 @@ create policy "worked_hours_parties" on public.worked_hours
     extra_id = auth.uid()
     or exists (select 1 from public.missions m where m.id = mission_id and m.establishment_id = auth.uid())
   );
+
+
+create or replace function public.apply_to_mission(p_mission_id uuid)
+returns public.applications
+language plpgsql security definer set search_path = public
+as $$
+declare v_user uuid := auth.uid(); v_role text; v_m public.missions%rowtype; v_app public.applications%rowtype;
+begin
+ if v_user is null then raise exception 'AUTH_REQUIRED'; end if;
+ select role into v_role from public.profiles where id=v_user;
+ if v_role <> 'extra' then raise exception 'EXTRA_ROLE_REQUIRED'; end if;
+ select * into v_m from public.missions where id=p_mission_id and status='published';
+ if not found then raise exception 'MISSION_NOT_AVAILABLE'; end if;
+ insert into public.applications(mission_id,extra_id) values(p_mission_id,v_user)
+ returning * into v_app;
+ return v_app;
+end; $$;
+grant execute on function public.apply_to_mission(uuid) to authenticated;
