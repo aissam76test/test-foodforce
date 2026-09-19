@@ -13,7 +13,7 @@ const jobs = [
 ] as const;
 
 export default function NouvelleMission() {
-  const [job, setJob] = useState(jobs[0][0]);
+  const [job, setJob] = useState<string>(jobs[0][0]);
   const [seats, setSeats] = useState(1);
   const [status, setStatus] = useState("");
   const selected = useMemo(() => jobs.find((x) => x[0] === job) ?? jobs[0], [job]);
