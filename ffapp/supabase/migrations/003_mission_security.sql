@@ -137,3 +137,13 @@ create policy "worked_hours_pro_insert" on public.worked_hours
  for insert to authenticated with check (
    exists (select 1 from public.missions m where m.id=mission_id and m.establishment_id=auth.uid())
  );
+
+
+-- Price snapshots are immutable from client roles. Mission editing must use
+-- controlled server functions so candidate_rate/employer_ttc cannot be altered.
+revoke insert, update, delete on public.missions from authenticated;
+revoke insert, update, delete on public.tariff_grid from authenticated;
+revoke insert, update, delete on public.worked_hours from authenticated;
+
+-- Applications are changed only through the controlled Pro workflow.
+revoke update on public.applications from authenticated;
