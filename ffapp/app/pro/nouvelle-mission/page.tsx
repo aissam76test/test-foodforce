@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { createClient } from "../../../lib/supabase/client";
 
 const jobs = [
   ["Serveur", 36.060209, 54.090314],
@@ -14,7 +15,41 @@ const jobs = [
 export default function NouvelleMission() {
   const [job, setJob] = useState(jobs[0][0]);
   const [seats, setSeats] = useState(1);
+  const [status, setStatus] = useState("");
   const selected = useMemo(() => jobs.find((x) => x[0] === job) ?? jobs[0], [job]);
+
+  async function publishMission(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setStatus("Publication en cours…");
+    const form = new FormData(e.currentTarget);
+    const supabase = createClient();
+    const { data: tariff } = await supabase
+      .from("tariff_grid")
+      .select("id")
+      .eq("job", job)
+      .eq("active", true)
+      .single();
+
+    if (!tariff) {
+      setStatus("Tarif introuvable.");
+      return;
+    }
+
+    const date = String(form.get("date"));
+    const start = String(form.get("start"));
+    const end = String(form.get("end"));
+
+    const { error } = await supabase.rpc("create_mission", {
+      p_tariff_id: tariff.id,
+      p_city: String(form.get("city")),
+      p_starts_at: date + "T" + start + ":00",
+      p_ends_at: date + "T" + end + ":00",
+      p_seats: seats,
+      p_notes: String(form.get("notes") || ""),
+    });
+
+    setStatus(error ? "Erreur : " + error.message : "Mission publiée avec le tarif officiel FoodForce.");
+  }
 
   return (
     <main className="dashboard">
@@ -29,7 +64,7 @@ export default function NouvelleMission() {
         <p>Créez votre besoin. Le tarif FoodForce est automatiquement appliqué.</p>
       </section>
 
-      <form className="panel" onSubmit={(e) => e.preventDefault()}>
+      <form className="panel" onSubmit={publishMission}>
         <label>Métier
           <select value={job} onChange={(e) => setJob(e.target.value)}>
             {jobs.map(([name]) => <option key={name}>{name}</option>)}
@@ -53,23 +88,24 @@ export default function NouvelleMission() {
         </label>
 
         <label>Date
-          <input type="date" required />
+          <input name="date" type="date" required />
         </label>
 
         <div className="two">
-          <label>Début<input type="time" required /></label>
-          <label>Fin<input type="time" required /></label>
+          <label>Début<input name="start" type="time" required /></label>
+          <label>Fin<input name="end" type="time" required /></label>
         </div>
 
         <label>Lieu
-          <input placeholder="Adresse de l'établissement" required />
+          <input name="city" placeholder="Ville / adresse de l'établissement" required />
         </label>
 
         <label>Informations complémentaires
-          <textarea placeholder="Tenue, consignes, événement..." rows={4} />
+          <textarea name="notes" placeholder="Tenue, consignes, événement..." rows={4} />
         </label>
 
         <button type="submit">Publier la mission</button>
+        {status && <p>{status}</p>}
       </form>
     </main>
   );
