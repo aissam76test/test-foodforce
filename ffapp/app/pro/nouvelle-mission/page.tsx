@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "../../../lib/supabase/client";
 
@@ -18,7 +18,7 @@ export default function NouvelleMission() {
   const [status, setStatus] = useState("");
   const selected = useMemo(() => jobs.find((x) => x[0] === job) ?? jobs[0], [job]);
 
-  async function publishMission(e: React.FormEvent<HTMLFormElement>) {
+  async function publishMission(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus("Publication en cours…");
     const form = new FormData(e.currentTarget);
