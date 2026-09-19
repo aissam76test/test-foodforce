@@ -51,3 +51,27 @@ language sql stable security definer set search_path = public
 as $$
   select exists(select 1 from public.profiles where id=auth.uid() and role='admin');
 $$;
+
+
+create policy "admin_read_profiles" on public.profiles
+  for select to authenticated using (id = auth.uid() or public.is_admin());
+
+create policy "admin_read_missions" on public.missions
+  for select to authenticated using (establishment_id = auth.uid() or status = 'published' or public.is_admin());
+
+create policy "admin_read_applications" on public.applications
+  for select to authenticated using (
+    extra_id = auth.uid()
+    or exists (select 1 from public.missions m where m.id = mission_id and m.establishment_id = auth.uid())
+    or public.is_admin()
+  );
+
+create policy "admin_read_worked_hours" on public.worked_hours
+  for select to authenticated using (
+    extra_id = auth.uid()
+    or exists (select 1 from public.missions m where m.id = mission_id and m.establishment_id = auth.uid())
+    or public.is_admin()
+  );
+
+create policy "admin_read_tariffs" on public.tariff_grid
+  for select to authenticated using (active = true or public.is_admin());
