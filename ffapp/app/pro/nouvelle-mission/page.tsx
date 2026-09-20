@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "../../../lib/supabase/client";
+import { buildMissionRange, formatHours, MAX_MISSION_HOURS } from "../../../lib/mission-time";
 
 type Tariff={id:number;job:string;candidate_rate:number;employer_ttc:number};
 
@@ -10,6 +11,8 @@ export default function NouvelleMission() {
   const [tariffs,setTariffs]=useState<Tariff[]>([]);
   const [job,setJob]=useState("");
   const [seats,setSeats]=useState(1);
+  const [date,setDate]=useState(""); const [start,setStart]=useState(""); const [end,setEnd]=useState("");
+  const [sending,setSending]=useState(false);
   const [status,setStatus]=useState("Chargement de la grille tarifaire…");
 
   useEffect(()=>{(async()=>{
@@ -21,20 +24,23 @@ export default function NouvelleMission() {
   })()},[]);
 
   const selected=tariffs.find(x=>x.job===job);
+  const range=date&&start&&end?buildMissionRange(date,start,end):null;
+  const overnight=!!range&&range.endsAt.toDateString()!==range.startsAt.toDateString();
+  const tooLong=!!range&&range.hours>MAX_MISSION_HOURS;
+  const totalTtc=range&&selected?range.hours*seats*Number(selected.employer_ttc):0;
 
   async function publishMission(e:FormEvent<HTMLFormElement>){
-    e.preventDefault();setStatus("Publication en cours…");
+    e.preventDefault();
     if(!selected){setStatus("Sélectionnez un métier.");return;}
+    if(!range){setStatus("Renseignez la date et les horaires.");return;}
+    if(tooLong){setStatus("Durée invalide : une mission ne peut pas dépasser "+MAX_MISSION_HOURS+" heures.");return;}
+    setSending(true);setStatus("Publication en cours…");
     const form=new FormData(e.currentTarget);const s=createClient();
     const {error}=await s.rpc("create_mission",{
-      p_tariff_id:selected.id,
-      p_city:String(form.get("city")),
-      p_address:String(form.get("address")),
-      p_starts_at:String(form.get("date"))+"T"+String(form.get("start"))+":00",
-      p_ends_at:String(form.get("date"))+"T"+String(form.get("end"))+":00",
-      p_seats:seats,
-      p_notes:String(form.get("notes")||"")
+      p_tariff_id:selected.id,p_city:String(form.get("city")),p_address:String(form.get("address")),
+      p_starts_at:range.startsAt.toISOString(),p_ends_at:range.endsAt.toISOString(),p_seats:seats,p_notes:String(form.get("notes")||"")
     });
+    setSending(false);
     setStatus(error?"Erreur : "+error.message:"Mission publiée avec le tarif officiel FoodForce. L'adresse restera masquée pour les Extras.");
   }
 
@@ -45,12 +51,13 @@ export default function NouvelleMission() {
       <label>Métier<select value={job} onChange={e=>setJob(e.target.value)} required>{tariffs.map(t=><option key={t.id} value={t.job}>{t.job}</option>)}</select></label>
       {selected&&<div className="lockedNotice"><div><b>Tarif Extra : {Number(selected.candidate_rate).toFixed(2)} MAD/h</b><span>Facturé à l'établissement : {Number(selected.employer_ttc).toFixed(2)} MAD/h TTC · 🔒 tarif verrouillé</span></div></div>}
       <label>Nombre d'extras<input type="number" min="1" value={seats} onChange={e=>setSeats(Math.max(1,Number(e.target.value)))} /></label>
-      <label>Date<input name="date" type="date" required /></label>
-      <div className="two"><label>Début<input name="start" type="time" required /></label><label>Fin<input name="end" type="time" required /></label></div>
+      <label>Date<input name="date" type="date" value={date} onChange={e=>setDate(e.target.value)} required /></label>
+      <div className="two"><label>Début<input name="start" type="time" value={start} onChange={e=>setStart(e.target.value)} required /></label><label>Fin<input name="end" type="time" value={end} onChange={e=>setEnd(e.target.value)} required /></label></div>
+      {range&&<div className={tooLong?"statusMessage":"lockedNotice"}><div><b>{formatHours(range.hours)} par extra{overnight?" · service de nuit (fin le lendemain)":""}</b><span>{tooLong?"Au-delà de "+MAX_MISSION_HOURS+" h, vérifiez les horaires saisis.":"Coût estimé : "+totalTtc.toFixed(2)+" MAD TTC pour "+seats+" extra(s)."}</span></div></div>}
       <label>Ville / quartier visible<input name="city" placeholder="Ex. Casablanca · Maarif" required /></label>
       <label>Adresse exacte<input name="address" placeholder="Visible uniquement après acceptation" required /></label>
       <label>Informations complémentaires<textarea name="notes" placeholder="Tenue, consignes, événement..." rows={4}/></label>
-      <button type="submit" disabled={!selected}>Publier la mission</button>
+      <button type="submit" disabled={!selected||!range||tooLong||sending}>{sending?"Publication…":"Publier la mission"}</button>
       {status&&<p>{status}</p>}
     </form>
   </main>;
