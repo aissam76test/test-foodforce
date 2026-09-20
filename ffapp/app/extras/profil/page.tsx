@@ -16,9 +16,18 @@ export default function ProfilExtra() {
     (async () => {
       const s = createClient();
       const { data: { user } } = await s.auth.getUser();
-      if (!user) { location.href = "/connexion"; return; }
+      if (!user) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const retry = await s.auth.getUser();
+        if (!retry.data.user) { location.href = "/connexion"; return; }
+        return;
+      }
       const { data } = await s.from("profiles").select("full_name,phone,city,role,avatar_url").eq("id", user.id).single();
-      if (data?.role !== "extra") { location.href = "/"; return; }
+      if (!data) {
+        setMessage("Impossible de charger votre profil. Réessayez dans quelques secondes.");
+        return;
+      }
+      if (data.role && data.role !== "extra") { location.href = "/"; return; }
       setName(data.full_name || "");
       setPhone(data.phone || "");
       setCity(data.city || "");
