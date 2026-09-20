@@ -7,6 +7,7 @@ import { createClient } from "../../lib/supabase/client";
 export default function Inscription() {
   const [role, setRole] = useState<"extra" | "pro">("extra");
   const [name, setName] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +19,7 @@ export default function Inscription() {
     setMessage("Création du compte…");
 
     const s = createClient();
-    const { error } = await s.auth.signUp({
+    const { data, error } = await s.auth.signUp({
       email,
       password,
       options: {
@@ -34,6 +35,20 @@ export default function Inscription() {
     if (error) {
       setMessage(error.message);
       return;
+    }
+
+    if (photo && data.user && data.session) {
+      const ext = photo.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = data.user.id + "/profile." + ext;
+      const { error: uploadError } = await s.storage.from("avatars").upload(path, photo, {
+        contentType: photo.type,
+        upsert: true,
+      });
+      if (uploadError) {
+        setMessage("Compte créé, mais la photo n'a pas pu être enregistrée.");
+        return;
+      }
+      await s.from("profiles").update({ avatar_url: path }).eq("id", data.user.id);
     }
 
     setMessage(
@@ -90,8 +105,20 @@ export default function Inscription() {
           />
         </label>
 
+        {role === "extra" && (
+          <label>
+            Photo de profil
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+            />
+            <small>Photo nette de vous, 1 Mo maximum.</small>
+          </label>
+        )}
+
         <label>
-          Ville
+          Téléphone
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
