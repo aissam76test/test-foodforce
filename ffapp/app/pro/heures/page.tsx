@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "../../../lib/supabase/client";
+import { formatHours, formatMissionSlot, missionHours } from "../../../lib/mission-time";
 
 type App = {
   id: string;
@@ -12,34 +13,64 @@ type App = {
   missions: {
     city: string;
     starts_at: string;
+    ends_at: string;
+    candidate_rate: number;
+    employer_ttc: number;
     tariff_grid: { job: string } | null;
   } | null;
 };
 
+type Worked = { mission_id: string; extra_id: string; hours: number };
+
 export default function Heures() {
   const [apps, setApps] = useState<App[]>([]);
+  const [worked, setWorked] = useState<Worked[]>([]);
   const [hours, setHours] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("Chargement…");
 
   async function load() {
     const s = createClient();
-    const { data, error } = await s
-      .from("applications")
-      .select("id,extra_id,mission_id,status,missions(city,starts_at,tariff_grid(job))")
-      .eq("status", "accepted")
-      .order("created_at", { ascending: false });
+    const [a, w] = await Promise.all([
+      s
+        .from("applications")
+        .select(
+          "id,extra_id,mission_id,status,missions(city,starts_at,ends_at,candidate_rate,employer_ttc,tariff_grid(job))",
+        )
+        .eq("status", "accepted")
+        .order("created_at", { ascending: false }),
+      s.from("worked_hours").select("mission_id,extra_id,hours"),
+    ]);
 
-    if (error) {
-      setMessage("Impossible de charger les heures.");
-    } else {
-      setApps((data || []) as unknown as App[]);
-      setMessage("");
+    if (a.error) {
+      setMessage("Impossible de charger les heures : " + a.error.message);
+      return;
     }
+
+    const rows = (a.data || []) as unknown as App[];
+    setApps(rows);
+    setWorked((w.data || []) as Worked[]);
+    // Pré-remplissage avec la durée prévue, service de nuit inclus.
+    setHours((prev) => {
+      const next = { ...prev };
+      for (const r of rows) {
+        if (next[r.id] === undefined) {
+          const planned = missionHours(r.missions?.starts_at, r.missions?.ends_at);
+          next[r.id] = planned ? String(Math.round(planned * 2) / 2) : "";
+        }
+      }
+      return next;
+    });
+    setMessage("");
   }
 
   useEffect(() => {
     load();
   }, []);
+
+  function validatedHours(a: App) {
+    return worked.find((w) => w.mission_id === a.mission_id && w.extra_id === a.extra_id);
+  }
 
   async function validate(a: App) {
     const value = Number(hours[a.id]);
@@ -49,6 +80,8 @@ export default function Heures() {
       return;
     }
 
+    setBusy(a.id);
+    setMessage("Validation en cours…");
     const s = createClient();
     const { data, error } = await s.rpc("validate_worked_hours", {
       p_mission_id: a.mission_id,
@@ -57,6 +90,7 @@ export default function Heures() {
     });
 
     if (error) {
+      setBusy(null);
       setMessage("Erreur : " + error.message);
       return;
     }
@@ -65,9 +99,10 @@ export default function Heures() {
       p_worked_hours_id: (data as { id: string }).id,
     });
 
+    setBusy(null);
     setMessage(
       paymentError
-        ? "Heures validées, mais paiement à préparer manuellement."
+        ? "Heures validées. La ligne de paiement n'a pas pu être créée : " + paymentError.message
         : "Heures validées et paiement préparé ✅",
     );
 
@@ -91,44 +126,70 @@ export default function Heures() {
       <section className="pageIntro">
         <span className="eyebrow">FOODFORCE PRO</span>
         <h1>Heures travaillées.</h1>
-        <p>Validez les heures réellement effectuées par les extras.</p>
+        <p>
+          Validez les heures réellement effectuées. La durée prévue est
+          pré-remplie, y compris pour les services qui se terminent après minuit.
+        </p>
       </section>
 
       <section className="missionGrid">
-        {apps.map((a) => (
-          <article className="missionCard" key={a.id}>
-            <span className="tag acceptedTag">ACCEPTÉ</span>
-            <h3>{a.missions?.tariff_grid?.job || "Mission"}</h3>
-            <p className="missionTime">
-              {a.missions?.city} ·{" "}
-              {a.missions?.starts_at
-                ? new Date(a.missions.starts_at).toLocaleString("fr-FR")
-                : ""}
-            </p>
+        {apps.map((a) => {
+          const done = validatedHours(a);
+          const planned = missionHours(a.missions?.starts_at, a.missions?.ends_at);
+          const employerTtc = Number(a.missions?.employer_ttc || 0);
+          const saisie = Number(hours[a.id] || 0);
 
-            <div className="anonymous">
-              <span>⏱</span>
-              <div>
-                <b>Extra sélectionné</b>
-                <small>Référence : {a.extra_id.slice(0, 8)}…</small>
+          return (
+            <article className="missionCard" key={a.id}>
+              <span className="tag acceptedTag">{done ? "HEURES VALIDÉES" : "ACCEPTÉ"}</span>
+              <h3>{a.missions?.tariff_grid?.job || "Mission"}</h3>
+              <p className="missionTime">
+                {a.missions?.city} · {formatMissionSlot(a.missions?.starts_at, a.missions?.ends_at)}
+              </p>
+
+              <div className="anonymous">
+                <span>⏱</span>
+                <div>
+                  <b>Extra sélectionné</b>
+                  <small>Référence : {a.extra_id.slice(0, 8)}…</small>
+                </div>
               </div>
-            </div>
 
-            <input
-              type="number"
-              min="0.5"
-              step="0.5"
-              placeholder="Nombre d'heures"
-              value={hours[a.id] || ""}
-              onChange={(e) =>
-                setHours({ ...hours, [a.id]: e.target.value })
-              }
-            />
-            <button className="primaryBtn" onClick={() => validate(a)}>
-              Valider les heures
-            </button>
-          </article>
-        ))}
+              {done ? (
+                <p>
+                  <b>{formatHours(Number(done.hours))} validées</b>
+                  <br />
+                  <small>
+                    Facturé : {(Number(done.hours) * employerTtc).toFixed(2)} MAD TTC
+                  </small>
+                </p>
+              ) : (
+                <>
+                  <input
+                    type="number"
+                    min="0.5"
+                    step="0.5"
+                    placeholder={planned ? `Prévu : ${formatHours(planned)}` : "Nombre d'heures"}
+                    value={hours[a.id] || ""}
+                    onChange={(e) => setHours({ ...hours, [a.id]: e.target.value })}
+                  />
+                  {saisie > 0 && (
+                    <small>
+                      À facturer : {(saisie * employerTtc).toFixed(2)} MAD TTC
+                    </small>
+                  )}
+                  <button
+                    className="primaryBtn"
+                    disabled={busy === a.id}
+                    onClick={() => validate(a)}
+                  >
+                    {busy === a.id ? "Validation…" : "Valider les heures"}
+                  </button>
+                </>
+              )}
+            </article>
+          );
+        })}
       </section>
 
       {message && <p className="statusMessage">{message}</p>}
