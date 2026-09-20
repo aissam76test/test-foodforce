@@ -1,0 +1,19 @@
+name: Export FoodForce FFApp
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create source archive
+        run: zip -qr foodforce-ffapp.zip ffapp -x 'ffapp/node_modules/*' 'ffapp/.next/*'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foodforce-ffapp
+          path: foodforce-ffapp.zip
+          retention-days: 7
