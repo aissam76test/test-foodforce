@@ -29,3 +29,13 @@ export function assertOfficialTariff(
   if (requestedEmployerTtc !== undefined && Math.abs(requestedEmployerTtc - official.employerTtc) > 0.000001) throw new Error("OFFICIAL_TARIFF_MISMATCH");
   return official;
 }
+
+/**
+ * Reconstitue la ligne tarifaire complète à partir du seul taux Extra.
+ */
+export function deriveFromCandidateRate(candidateRate: number) {
+  const avgRate = candidateRate / CANDIDATE_MULTIPLIER;
+  const employerHt = candidateRate * (1 + FOODFORCE_COMMISSION);
+  const vat = employerHt * VAT_RATE;
+  return { avgRate, candidateRate, employerHt, vat, employerTtc: employerHt + vat };
+}
