@@ -1,0 +1,1 @@
+-- Planned migration (content to be finalized against the full schema): restrict public mission reads to anonymized fields; restrict precise address access to an accepted provider; protect tariff and billing snapshot fields from client-side mutation; preserve existing missions and invoices.
