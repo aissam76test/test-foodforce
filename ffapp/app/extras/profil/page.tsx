@@ -27,7 +27,6 @@ export default function ProfilExtra() {
         setMessage("Impossible de charger votre profil. Réessayez dans quelques secondes.");
         return;
       }
-      if (data.role && data.role !== "extra") { location.href = "/"; return; }
       setName(data.full_name || "");
       setPhone(data.phone || "");
       setCity(data.city || "");
