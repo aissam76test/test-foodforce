@@ -63,6 +63,7 @@ export default function Admin() {
         <nav>
           <Link href="/admin/tarifs">Grille tarifaire</Link>
           <Link href="/">Accueil</Link>
+          <button className="secondaryBtn" onClick={async()=>{const s=createClient();await s.auth.signOut();location.href="/connexion";}}>Déconnexion</button>
         </nav>
       </header>
 
