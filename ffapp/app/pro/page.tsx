@@ -1,3 +1,15 @@
 import Link from "next/link";
-const jobs=[["Serveur","54.09"],["Runner","45.54"],["Barman","65.48"]];
-export default function Pro(){return <main className="dashboard"><header><div className="brand">FOOD<span>FORCE</span> PRO</div><nav><Link href="/">Accueil</Link><Link href="/extras">FoodForce Extras</Link></nav></header><section className="hero"><p className="eyebrow">FOODFORCE PRO</p><h1>Gérer mes missions</h1><p>Publiez une mission, recevez des candidatures et validez les heures.</p><div><Link className="buttonLink" href="/pro/nouvelle-mission">+ Publier une mission</Link> <Link className="buttonLink" href="/pro/candidatures">Candidatures</Link> <Link className="buttonLink" href="/pro/heures">Heures</Link> <Link className="buttonLink" href="/pro/profil">Mon profil</Link> <Link className="buttonLink" href="/pro/paiements">Paiements</Link></div></section><section className="panel"><h2>Choisissez un métier</h2><p>Le tarif est automatiquement issu de la grille officielle FoodForce.</p>{jobs.map(([job,rate])=><div className="row" key={job}><span>{job}</span><b>{rate} MAD/h TTC</b></div>)}</section><footer>🔒 Les tarifs sont verrouillés côté serveur. Le Pro ne peut pas les modifier.</footer></main>}
+
+export default function Pro(){
+ return <main className="appShell">
+  <header className="appHeader"><Link className="brand" href="/">FOOD<span>FORCE</span></Link><div className="appName">PRO</div><nav><Link href="/pro">Accueil</Link><Link href="/pro/candidatures">Candidatures</Link><Link href="/pro/heures">Heures</Link><Link href="/pro/profil">Profil</Link></nav></header>
+  <section className="appHero proHero"><div><p className="eyebrow">FOODFORCE PRO</p><h1>Renforcez votre équipe,<br/><span>simplement.</span></h1><p>Publiez vos besoins, recevez des candidatures et gérez vos extras depuis un seul espace.</p><Link className="primaryBtn" href="/pro/nouvelle-mission">+ Publier une mission</Link></div><div className="proStats"><div><b>0</b><span>Missions en cours</span></div><div><b>0</b><span>Candidatures</span></div><div><b>0</b><span>Heures à valider</span></div></div></section>
+  <section className="proGrid">
+   <Link className="proTile" href="/pro/nouvelle-mission"><span>＋</span><b>Publier une mission</b><small>Choisissez un métier et vos horaires. Le tarif FoodForce est automatique.</small></Link>
+   <Link className="proTile" href="/pro/candidatures"><span>◉</span><b>Gérer les candidatures</b><small>Sélectionnez vos extras et révélez les informations nécessaires après acceptation.</small></Link>
+   <Link className="proTile" href="/pro/heures"><span>✓</span><b>Valider les heures</b><small>Validez les heures réalisées pour déclencher la suite du paiement.</small></Link>
+   <Link className="proTile" href="/pro/paiements"><span>€</span><b>Paiements & factures</b><small>Retrouvez les montants calculés avec la grille officielle.</small></Link>
+  </section>
+  <div className="lockedNotice">🔒 <div><b>Tarifs FoodForce verrouillés</b><span>Le Pro choisit le métier, mais ne peut jamais modifier le tarif horaire. Le montant est imposé côté serveur.</span></div></div>
+ </main>
+}
