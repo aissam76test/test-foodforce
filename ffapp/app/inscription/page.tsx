@@ -7,6 +7,7 @@ import { createClient } from "../../lib/supabase/client";
 export default function Inscription() {
   const [role, setRole] = useState<"extra" | "pro">("extra");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [city, setCity] = useState("");
@@ -25,6 +26,7 @@ export default function Inscription() {
           role,
           full_name: name,
           city,
+          phone,
         },
       },
     });
@@ -80,10 +82,20 @@ export default function Inscription() {
         </label>
 
         <label>
-          Nom / établissement
+          {role === "extra" ? "Nom et prénom" : "Nom / établissement"}
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </label>
+
+        <label>
+          Ville
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+212 6 00 00 00 00"
             required
           />
         </label>
