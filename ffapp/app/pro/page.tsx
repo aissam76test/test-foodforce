@@ -55,7 +55,7 @@ export default function Pro() {
           .from("worked_hours")
           .select("id", { count: "exact", head: true })
           .in("mission_id", missionIds)
-          .eq("status", "submitted");
+          .is("validated_at", null);
 
         applications = applicationCount || 0;
         hours = hourCount || 0;
