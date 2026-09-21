@@ -28,18 +28,24 @@ export default function Inscription() {
       role,full_name:name,city,phone,primary_job_id:role==="extra"?Number(jobId):null,
       auto_entrepreneur_number:role==="extra"?autoNumber:null,experience:role==="extra"?experience:null,experience_years:role==="extra"?Number(experienceYears):0
     }}});
+
     if(error){setMessage(error.message);return;}
 
-    if(role==="extra" && data.user && data.session){
-      await s.from("extra_profiles").upsert({extra_id:data.user.id,auto_entrepreneur_number:autoNumber,bio:experience});
-      if(jobId) await s.from("extra_skills").upsert({extra_id:data.user.id,tariff_id:Number(jobId)});
-      if(photo){
-        const ext=photo.name.split(".").pop()?.toLowerCase()||"jpg"; const path=data.user.id+"/profile."+ext;
-        const {error:uploadError}=await s.storage.from("avatars").upload(path,photo,{contentType:photo.type,upsert:true});
-        if(!uploadError) await s.from("profiles").update({avatar_url:path}).eq("id",data.user.id);
-      }
+    // The database trigger creates profiles/extra_profiles/extra_skills from
+    // auth metadata. This also works when email confirmation is enabled and
+    // Supabase returns a user without a session.
+    if(role==="extra" && data.user && data.session && photo){
+      const ext=photo.name.split(".").pop()?.toLowerCase()||"jpg";
+      const path=data.user.id+"/profile."+ext;
+      const {error:uploadError}=await s.storage.from("avatars").upload(path,photo,{contentType:photo.type,upsert:true});
+      if(!uploadError) await s.from("profiles").update({avatar_url:path}).eq("id",data.user.id);
     }
-    setMessage("Compte créé. Vérifiez votre email si une confirmation est demandée.");
+
+    if(data.user && !data.session){
+      setMessage("Compte créé. Vérifiez votre email pour activer votre compte. Vos informations Extra sont déjà enregistrées.");
+    } else {
+      setMessage("Compte créé. Votre profil est enregistré.");
+    }
   }
 
   return <main className="signupPage">
